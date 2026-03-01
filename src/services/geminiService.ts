@@ -1,0 +1,149 @@
+import { GoogleGenAI, Type } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+export interface ReplyRequest {
+  message: string;
+  sender: 'Boss' | 'Colleague' | 'Junior';
+  tone: 'Positive' | 'Negative' | 'Neutral';
+  inputLanguage: 'English' | 'Bangla' | 'Banglish' | 'Auto-detect';
+  mode: 'reply' | 'say' | 'image' | 'classic';
+}
+
+export interface ReplyResponse {
+  english: string;
+  bangla: string;
+}
+
+export async function generateCorporateReply(req: ReplyRequest): Promise<ReplyResponse> {
+  const isReply = req.mode === 'reply';
+  
+  const systemInstruction = `You are a professional corporate communication assistant.
+Your task is to ${isReply ? 'generate a short, professional reply based on the message received' : 'rewrite the user\'s intent into a polished, professional corporate message'}.
+
+Instructions:
+1. The input message might be in ${req.inputLanguage}. If "Auto-detect" is selected, identify the language first.
+2. Keep the output short (1–3 lines maximum).
+3. Always maintain a professional tone.
+4. No slang or casual language.
+5. Adjust respect level based on hierarchy (who the recipient is):
+   - If Boss → More respectful and formal.
+   - If Colleague → Professional and cooperative.
+   - If Junior → Supportive and guiding.
+6. If tone is Negative, remain polite, constructive, and solution-focused.
+7. If tone is Positive, show willingness and cooperation.
+8. If tone is Neutral, keep it simple and professional.
+9. Do not add extra explanation.
+10. Provide both an English version and a Bangla translation.
+
+${!isReply ? '11. Correct all grammar and arrange the thoughts into a clear, professional statement.' : ''}
+
+Output MUST be in JSON format with keys "english" and "bangla".`;
+
+  const prompt = `${isReply ? 'Received Message' : 'User Intent'}: "${req.message}"
+Target Recipient: ${req.sender}
+Desired Tone: ${req.tone}`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      systemInstruction,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          english: { type: Type.STRING },
+          bangla: { type: Type.STRING },
+        },
+        required: ["english", "bangla"],
+      },
+    },
+  });
+
+  try {
+    return JSON.parse(response.text || '{}') as ReplyResponse;
+  } catch (e) {
+    console.error("Failed to parse Gemini response", e);
+    throw new Error("Failed to generate a valid reply.");
+  }
+}
+
+export interface ImageRequest {
+  base64Image: string;
+  mimeType: string;
+  inspirationImage?: string;
+  inspirationMimeType?: string;
+  heading?: string;
+  title?: string;
+  specialRequirement?: string;
+  logoImage?: string; // Base64 logo image
+  logoMimeType?: string;
+  theme: 'Ramadan' | 'Special Offer' | 'Regular';
+  backgroundType: string;
+}
+
+export async function generateProductPhotography(req: ImageRequest): Promise<string> {
+  const parts: any[] = [
+    {
+      inlineData: {
+        data: req.base64Image,
+        mimeType: req.mimeType,
+      },
+    }
+  ];
+
+  if (req.logoImage && req.logoMimeType) {
+    parts.push({
+      inlineData: {
+        data: req.logoImage,
+        mimeType: req.logoMimeType,
+      },
+    });
+  }
+
+  if (req.inspirationImage && req.inspirationMimeType) {
+    parts.push({
+      inlineData: {
+        data: req.inspirationImage,
+        mimeType: req.inspirationMimeType,
+      },
+    });
+  }
+
+  let prompt = `Enhance this image to look like professional product photography.
+  
+  Context & Requirements:
+  - Theme: ${req.theme}
+  - Background Type: ${req.backgroundType}
+  ${req.specialRequirement ? `- Special Requirement: ${req.specialRequirement}` : ''}`;
+
+  if (req.inspirationImage) {
+    prompt += `\n- Inspiration: COPY the EXACT SAME background, environment, lighting, and overall composition from the provided inspiration image. The product from the first image should be placed naturally into the environment of the inspiration image. Match the aesthetic perfectly.`;
+  }
+  
+  prompt += `\n\nInstructions:
+  - Make it look clean, high-end, with perfect lighting.
+  - The background should match the theme (${req.theme}) and type (${req.backgroundType}).
+  - Focus on the product and the environment. 
+  - Ensure there is clean, negative space in the composition suitable for adding marketing text and a logo later.
+  - Do NOT add any text or logos yourself; just provide the high-quality base image.
+  - Return only the enhanced image.`;
+
+  parts.push({ text: prompt });
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: parts,
+    },
+  });
+
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData) {
+      return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+    }
+  }
+  
+  throw new Error("No image generated by the model.");
+}
