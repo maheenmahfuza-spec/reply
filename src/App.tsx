@@ -572,10 +572,12 @@ export default function App() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Check if API key is defined
-    if (!process.env.GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is missing. Please set it in your environment variables.");
-      setApiKeyMissing(true);
+    // Log a warning if the key appears to be missing, but don't block the UI
+    const key = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    const isPlaceholder = key === "MY_GEMINI_API_KEY" || key === "YOUR_GEMINI_API_KEY";
+    
+    if (!key || isPlaceholder || key.trim() === "") {
+      console.warn("GEMINI_API_KEY is missing or using a placeholder. AI features will fail until a valid key is provided in environment variables.");
     }
   }, []);
 
@@ -654,6 +656,11 @@ export default function App() {
     return boldStyle;
   };
 
+  const isApiKeyError = (error: any) => {
+    const msg = error.message?.toLowerCase() || "";
+    return msg.includes("api key") || msg.includes("401") || msg.includes("403") || msg.includes("unauthorized");
+  };
+
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
@@ -701,12 +708,13 @@ export default function App() {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (isApiKeyError(error)) setApiKeyMissing(true);
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I encountered an error. Please try again.",
+        content: `I'm sorry, I encountered an error: ${error.message || "Please try again."}`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -796,12 +804,13 @@ export default function App() {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (isApiKeyError(error)) setApiKeyMissing(true);
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I encountered an error. Please try again.",
+        content: `I'm sorry, I encountered an error: ${error.message || "Please try again."}`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -893,12 +902,13 @@ export default function App() {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (isApiKeyError(error)) setApiKeyMissing(true);
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I couldn't process the image. Please try again.",
+        content: `I'm sorry, I encountered an error: ${error.message || "Please try again."}`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -993,8 +1003,16 @@ export default function App() {
         next[index] = assistantMsg;
         return next;
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (isApiKeyError(error)) setApiKeyMissing(true);
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `I'm sorry, I encountered an error: ${error.message || "Please try again."}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
@@ -1180,19 +1198,19 @@ export default function App() {
           "mx-auto space-y-8 transition-all duration-300",
           chatWidth === 'narrow' ? "max-w-xl" : chatWidth === 'wide' ? "max-w-5xl" : "max-w-3xl"
         )}>
-          {apiKeyMissing && (
+          {apiKeyMissing && messages.length === 0 && (
             <div className={cn(
-              "p-6 rounded-3xl border-2 border-red-500/20 bg-red-500/5 text-center space-y-4",
-              isDarkMode ? "bg-red-900/10" : "bg-red-50"
+              "p-6 rounded-3xl border-2 border-amber-500/20 bg-amber-500/5 text-center space-y-4",
+              isDarkMode ? "bg-amber-900/10" : "bg-amber-50"
             )}>
-              <div className="p-3 bg-red-500/10 rounded-full w-fit mx-auto">
-                <X className="w-6 h-6 text-red-500" />
+              <div className="p-3 bg-amber-500/10 rounded-full w-fit mx-auto">
+                <AlertCircle className="w-6 h-6 text-amber-500" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-red-500">API Key Missing</h3>
+                <h3 className="text-lg font-bold text-amber-500">Configuration Note</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  The <code className="bg-slate-200 dark:bg-slate-800 px-1 rounded">GEMINI_API_KEY</code> environment variable is not set. 
-                  Please add it to your Netlify environment variables and redeploy.
+                  The <code className="bg-slate-200 dark:bg-slate-800 px-1 rounded">GEMINI_API_KEY</code> seems to be missing. 
+                  If you are seeing this in a deployed environment, please add the key to your environment variables.
                 </p>
               </div>
             </div>
