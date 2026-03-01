@@ -1,20 +1,50 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Re-Play Deployment Guide (Netlify)
 
-# Run and deploy your AI Studio app
+This application is ready to be deployed to Netlify as a Single Page Application (SPA).
 
-This contains everything you need to run your app locally.
+## Prerequisites
 
-View your app in AI Studio: https://ai.studio/apps/dba98221-ba96-4717-aeae-187a3b072553
+1.  A [Netlify](https://www.netlify.com/) account.
+2.  The [Netlify CLI](https://docs.netlify.com/cli/get-started/) installed (optional, but recommended).
+3.  Your **Gemini API Key**.
 
-## Run Locally
+## Deployment Steps
 
-**Prerequisites:**  Node.js
+### Option 1: Manual Deployment (Drag and Drop)
 
+1.  Run the build command locally:
+    ```bash
+    npm run build
+    ```
+2.  Log in to your Netlify account and go to the **Sites** page.
+3.  Drag the `dist` folder from your project root into the deployment area.
+4.  Once deployed, go to **Site settings > Environment variables**.
+5.  Add a new variable:
+    *   **Key**: `GEMINI_API_KEY`
+    *   **Value**: `your_actual_gemini_api_key_here`
+6.  Trigger a new deploy or wait for the environment variable to propagate.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Option 2: Git Integration (Recommended)
+
+1.  Push your code to a Git provider (GitHub, GitLab, or Bitbucket).
+2.  In Netlify, click **Add new site > Import an existing project**.
+3.  Select your repository.
+4.  Netlify will automatically detect the settings from `netlify.toml`:
+    *   **Build command**: `npm run build`
+    *   **Publish directory**: `dist`
+5.  Before clicking **Deploy site**, go to the **Environment variables** section and add:
+    *   **Key**: `GEMINI_API_KEY`
+    *   **Value**: `your_actual_gemini_api_key_here`
+6.  Click **Deploy site**.
+
+## Configuration Details
+
+The project includes a `netlify.toml` file that handles:
+-   **SPA Routing**: Ensures that all routes are redirected to `index.html` so React Router can handle them.
+-   **Build Settings**: Automates the build and publish process.
+
+## Environment Variables
+
+| Variable | Description |
+| :--- | :--- |
+| `GEMINI_API_KEY` | **Required**. Your Google Gemini API key for AI features. |

@@ -65,6 +65,7 @@ interface ChatMessage {
     logo?: string;
     headingStyle?: TextStyles;
     titleStyle?: TextStyles;
+    mode?: string;
   };
   timestamp: Date;
 }
@@ -77,7 +78,8 @@ const CanvasEditor = ({
   headingStyle,
   titleStyle,
   isDarkMode,
-  onExport 
+  onExport,
+  readOnly = false
 }: { 
   image: string; 
   heading?: string; 
@@ -87,6 +89,7 @@ const CanvasEditor = ({
   titleStyle?: TextStyles;
   isDarkMode: boolean;
   onExport: (dataUrl: string) => void;
+  readOnly?: boolean;
 }) => {
   const [bgImage] = useImage(image, 'anonymous');
   const [logoImage] = useImage(logo || '', 'anonymous');
@@ -224,43 +227,47 @@ const CanvasEditor = ({
       <div className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md border-b border-white/10 gap-3">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="p-2 bg-amber-500/10 rounded-lg shrink-0">
-            <Maximize2 className="w-4 h-4 text-amber-500" />
+            {readOnly ? <ImageIcon className="w-4 h-4 text-amber-500" /> : <Maximize2 className="w-4 h-4 text-amber-500" />}
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-bold text-white truncate">Interactive Editor</h3>
-            <p className="text-[9px] text-white/40 uppercase tracking-wider font-bold truncate">Drag & Resize elements</p>
+            <h3 className="text-sm font-bold text-white truncate">{readOnly ? 'Image Preview' : 'Interactive Editor'}</h3>
+            <p className="text-[9px] text-white/40 uppercase tracking-wider font-bold truncate">
+              {readOnly ? 'Final Composition' : 'Drag & Resize elements'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button 
-            onClick={() => {
-              const initialElements: any[] = [];
-              if (heading) initialElements.push({ 
-                id: 'heading', 
-                type: 'text', 
-                text: heading, 
-                x: 50, 
-                y: 50, 
-                fontSize: 48,
-                style: headingStyle
-              });
-              if (title) initialElements.push({ 
-                id: 'title', 
-                type: 'text', 
-                text: title, 
-                x: 50, 
-                y: 120, 
-                fontSize: 32,
-                style: titleStyle
-              });
-              if (logo) initialElements.push({ id: 'logo', type: 'logo', x: 50, y: 200, width: 150, height: 150 });
-              setElements(initialElements);
-              setSelectedId(null);
-            }}
-            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white text-[10px] sm:text-xs font-medium transition-colors"
-          >
-            Reset
-          </button>
+          {!readOnly && (
+            <button 
+              onClick={() => {
+                const initialElements: any[] = [];
+                if (heading) initialElements.push({ 
+                  id: 'heading', 
+                  type: 'text', 
+                  text: heading, 
+                  x: 50, 
+                  y: 50, 
+                  fontSize: 48,
+                  style: headingStyle
+                });
+                if (title) initialElements.push({ 
+                  id: 'title', 
+                  type: 'text', 
+                  text: title, 
+                  x: 50, 
+                  y: 120, 
+                  fontSize: 32,
+                  style: titleStyle
+                });
+                if (logo) initialElements.push({ id: 'logo', type: 'logo', x: 50, y: 200, width: 150, height: 150 });
+                setElements(initialElements);
+                setSelectedId(null);
+              }}
+              className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white text-[10px] sm:text-xs font-medium transition-colors"
+            >
+              Reset
+            </button>
+          )}
           <button 
             onClick={handleExport}
             className="flex items-center gap-2 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-amber-600 hover:bg-amber-500 text-white transition-all shadow-lg shadow-amber-600/20 active:scale-95 whitespace-nowrap"
@@ -337,13 +344,15 @@ const CanvasEditor = ({
                       shadowBlur={style.shadowBlur}
                       shadowOpacity={style.shadowOpacity}
                       letterSpacing={style.letterSpacing}
-                      draggable
+                      draggable={!readOnly}
                       onDragEnd={(e) => {
+                        if (readOnly) return;
                         const newElements = [...elements];
                         newElements[i] = { ...el, x: e.target.x(), y: e.target.y() };
                         setElements(newElements);
                       }}
                       onTransformEnd={(e) => {
+                        if (readOnly) return;
                         const node = e.target;
                         const newElements = [...elements];
                         newElements[i] = {
@@ -355,8 +364,8 @@ const CanvasEditor = ({
                         };
                         setElements(newElements);
                       }}
-                      onClick={() => setSelectedId(el.id)}
-                      onTap={() => setSelectedId(el.id)}
+                      onClick={() => !readOnly && setSelectedId(el.id)}
+                      onTap={() => !readOnly && setSelectedId(el.id)}
                     />
                   );
                 }
@@ -370,13 +379,15 @@ const CanvasEditor = ({
                       y={el.y}
                       width={el.width}
                       height={el.height}
-                      draggable
+                      draggable={!readOnly}
                       onDragEnd={(e) => {
+                        if (readOnly) return;
                         const newElements = [...elements];
                         newElements[i] = { ...el, x: e.target.x(), y: e.target.y() };
                         setElements(newElements);
                       }}
                       onTransformEnd={(e) => {
+                        if (readOnly) return;
                         const node = e.target;
                         const newElements = [...elements];
                         newElements[i] = {
@@ -388,15 +399,15 @@ const CanvasEditor = ({
                         };
                         setElements(newElements);
                       }}
-                      onClick={() => setSelectedId(el.id)}
-                      onTap={() => setSelectedId(el.id)}
+                      onClick={() => !readOnly && setSelectedId(el.id)}
+                      onTap={() => !readOnly && setSelectedId(el.id)}
                     />
                   );
                 }
                 return null;
               })}
               
-              {selectedId && (
+              {selectedId && !readOnly && (
                 <Transformer
                   ref={transformerRef}
                   enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
@@ -411,8 +422,10 @@ const CanvasEditor = ({
             </Layer>
           </Stage>
         </div>
+      </div>
 
-        {/* Text Customization Toolbar */}
+      {/* Text Customization Toolbar */}
+      {!readOnly && (
         <div className={cn(
           "p-3 border-t flex flex-wrap items-center gap-4",
           isDarkMode ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"
@@ -496,7 +509,7 @@ const CanvasEditor = ({
             </>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -545,6 +558,7 @@ export default function App() {
     logo?: string;
     headingStyle?: TextStyles;
     titleStyle?: TextStyles;
+    readOnly?: boolean;
   } | null>(null);
   const [dailyImageCount, setDailyImageCount] = useState(0);
   const DAILY_LIMIT = 25;
@@ -610,6 +624,34 @@ export default function App() {
     setImageSpecialRequirement(preset.specialRequirement);
     setSelectedPresetId(preset.id);
     setActiveQuickSetting(null);
+  };
+
+  const getThemeHeadingStyle = (theme: string, baseColor: string): TextStyles => {
+    const boldStyle = {
+      fontFamily: "'Inter', sans-serif",
+      fill: baseColor,
+      fontStyle: "bold",
+      shadowColor: "black",
+      shadowBlur: 10,
+      shadowOpacity: 0.5
+    };
+
+    if (theme === 'Ramadan') {
+      return {
+        ...boldStyle,
+        fontFamily: "'Cormorant Garamond', serif",
+        fill: '#FFD700', // Gold
+        fontStyle: 'italic bold',
+      };
+    } else if (theme === 'Special Offer') {
+      return {
+        ...boldStyle,
+        fontFamily: "'Anton', sans-serif",
+        fill: '#FF4500', // Orange Red
+      };
+    }
+    
+    return boldStyle;
   };
 
   const handleSend = async () => {
@@ -740,18 +782,12 @@ export default function App() {
           heading: imageHeading,
           title: imageTitle,
           logo: imageLogo || undefined,
-          headingStyle: imageHeadingStyle || {
-            fontFamily: "'Inter', sans-serif",
-            fill: imageTextColor,
-            fontStyle: "bold",
-            shadowColor: "black",
-            shadowBlur: 10,
-            shadowOpacity: 0.5
-          },
+          mode: 'classic',
+          headingStyle: imageHeadingStyle || getThemeHeadingStyle(imageTheme, imageTextColor),
           titleStyle: imageTitleStyle || {
             fontFamily: "'Inter', sans-serif",
             fill: imageTextColor,
-            fontStyle: "normal",
+            fontStyle: "bold",
             shadowColor: "black",
             shadowBlur: 5,
             shadowOpacity: 0.5
@@ -843,14 +879,8 @@ export default function App() {
           heading: imageHeading,
           title: imageTitle,
           logo: imageLogo || undefined,
-          headingStyle: imageHeadingStyle || {
-            fontFamily: "'Inter', sans-serif",
-            fill: imageTextColor,
-            fontStyle: "bold",
-            shadowColor: "black",
-            shadowBlur: 10,
-            shadowOpacity: 0.5
-          },
+          mode: mode || 'image',
+          headingStyle: imageHeadingStyle || getThemeHeadingStyle(imageTheme, imageTextColor),
           titleStyle: imageTitleStyle || {
             fontFamily: "'Inter', sans-serif",
             fill: imageTextColor,
@@ -1343,7 +1373,8 @@ export default function App() {
                         title: msg.imageMetadata?.title,
                         logo: msg.imageMetadata?.logo,
                         headingStyle: msg.imageMetadata?.headingStyle,
-                        titleStyle: msg.imageMetadata?.titleStyle
+                        titleStyle: msg.imageMetadata?.titleStyle,
+                        readOnly: msg.imageMetadata?.mode === 'image'
                       })}
                       className="mb-2 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-800/50 cursor-zoom-in group/img relative"
                     >
@@ -1938,6 +1969,7 @@ export default function App() {
                 headingStyle={previewData.headingStyle}
                 titleStyle={previewData.titleStyle}
                 isDarkMode={isDarkMode}
+                readOnly={previewData.readOnly}
                 onExport={(dataUrl) => {
                   const link = document.createElement('a');
                   link.href = dataUrl;
